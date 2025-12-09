@@ -16,9 +16,10 @@ Environment="DB_PASS=password"
 ExecStart=/home/ubuntu/attendance-api/venv/bin/gunicorn app:app \
   --bind 0.0.0.0:8082 \
   --workers 3 \
-  --access-logfile /var/log/attendance-access.log \
-  --error-logfile /var/log/attendance-error.log \
-  --log-level info
+  --access-logfile /var/log/attendance-api/attendance-access.log \
+  --error-logfile /var/log/attendance-api/attendance-error.log \
+  --log-level info \
+  --log-config log.conf
 
 Restart=on-failure
 RestartSec=5s
@@ -26,4 +27,3 @@ LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
-
