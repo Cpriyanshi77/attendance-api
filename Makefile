@@ -15,7 +15,21 @@ docker-build:
 	docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${APP_VERSION} -f Dockerfile .
 
 docker-push:
-	docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${APP_VERSION}
+	docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${APP_VERSION} 
+
+LIQUIBASE_CLS = /home/ubuntu/attendance-api/liquibase_lib/postgresql-42.5.4.jar
+CHANGELOG = migration/db-changelog.xml
+JDBC_URL = jdbc:postgresql://127.0.0.1:5432/attendance_db
+DB_USER = postgres
+DB_PASS = password
 
 run-migrations:
-	liquibase --changeLogFile=db-changelog.xml  --driver=org.postgresql.Driver --url=jdbc:postgresql://13.201.69.78:5432/attendance_db  --username=postgres --password=password  update
+	@echo "Running liquibase migrations using $(CHANGELOG)"
+	liquibase --changeLogFile=$(CHANGELOG) \
+	  --url=$(JDBC_URL) \
+	  --username=$(DB_USER) \
+	  --password=$(DB_PASS) \
+	  --driver=org.postgresql.Driver \
+	  --classpath=$(LIQUIBASE_CLS) \
+	  update
+
