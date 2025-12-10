@@ -55,7 +55,7 @@ chmod +x "$ARTIFACT_DIR/run.sh"
 echo "Packaging artifact..."
 
 # Must match EXACT name BuildPiper will upload
-tar -czf artifact/attendance_artifact attendance_artifact
+tar -czf attendance_artifact attendance_artifact
 
 echo "=========================================="
 echo " Artifact created successfully!"
