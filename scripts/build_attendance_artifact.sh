@@ -54,11 +54,16 @@ chmod +x "$ARTIFACT_DIR/run.sh"
 
 echo "Packaging artifact..."
 
-# Must match EXACT name BuildPiper will upload
-tar -czf attendance_artifact attendance_artifact
+# Directory to hold the final tar that BuildPiper will copy
+FINAL_ARTIFACT_DIR=artifact
+mkdir -p "$FINAL_ARTIFACT_DIR"
+
+# Create tar file at artifact/attendance_artifact
+# (Make sure BuildPiper's generated_artifact_location is set to: artifact/attendance_artifact)
+tar -czf "$FINAL_ARTIFACT_DIR/attendance_artifact" "$ARTIFACT_DIR"
 
 echo "=========================================="
 echo " Artifact created successfully!"
-echo " Location: $ARTIFACT_DIR"
-echo " Run API using: ./run.sh"
+echo " Location: $FINAL_ARTIFACT_DIR/attendance_artifact"
+echo " Run API using: ./run.sh (inside extracted $ARTIFACT_DIR)"
 echo "=========================================="
