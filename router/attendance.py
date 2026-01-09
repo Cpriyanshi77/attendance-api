@@ -13,6 +13,8 @@ from voluptuous import Schema, Required
 from client.postgres import DatabaseSDKFacade
 from utils.validator import data_validator
 from router.cache import cache
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime, format_datetime
 
 route = Blueprint("attendance", __name__)
 
@@ -35,42 +37,68 @@ def create_record(
 ):
     """
     Function for creating the record in the database
-    ---
-    consumes:
-      - application/json
-    description: Create record of employee attendance
-    produces:
-      - application/json
-    parameters:
-    - description: Attendance Data Payload
-      in: body
-      name: attendance
-      required: true
-      schema:
-        $ref: '#/definitions/EmployeeInfo'
-    definitions:
-      EmployeeInfo:
-        properties:
-          id:
-            type: string
-          name:
-            type: string
-          status:
-            type: string
-          date:
-            type: string
-        type: object
-    responses:
-      200:
-        description: OK
-        schema:
-          $ref: '#/definitions/EmployeeInfo'
-    summary: CreateRecord API is for creating particular attendance record
-    tags:
-      - attendance
+    ...
     """
-    record = DatabaseSDKFacade.database.create_employee_attendance(id, name, status, date)
+    # Normalize incoming date to RFC format expected by the DB/API layer
+    normalized_date = None
+    s = (date or "").strip()
+    if not s:
+        return jsonify({"message": "Invalid date format", "detail": "empty date"}), 400
+
+    # 1) Try ISO date YYYY-MM-DD (most common from UI)
+    try:
+        if len(s) == 10 and s.count("-") == 2:
+            # treat as midnight UTC
+            dt = datetime.fromisoformat(s + "T00:00:00")
+            dt = dt.replace(tzinfo=timezone.utc)
+            normalized_date = format_datetime(dt)
+    except Exception:
+        normalized_date = None
+
+    # 2) If not yet parsed, try ISO datetime variants (with time)
+    if normalized_date is None:
+        try:
+            dt = datetime.fromisoformat(s)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            normalized_date = format_datetime(dt)
+        except Exception:
+            normalized_date = None
+
+    # 3) If still not parsed, try RFC-like parsing
+    if normalized_date is None:
+        try:
+            dt = parsedate_to_datetime(s)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            normalized_date = format_datetime(dt)
+        except Exception:
+            normalized_date = None
+
+    if normalized_date is None:
+        return jsonify({"message": "Invalid date format", "detail": f"Unrecognized date: {date}"}), 400
+
+    # call DB using normalized RFC date string
+    # At this point `dt` is the parsed datetime object used above.
+    # Convert to ISO date string (YYYY-MM-DD) for storage
+    try:
+        # ensure dt exists: if you parsed using the earlier logic, dt is set
+        iso_date = dt.date().isoformat()
+    except NameError:
+        # fallback: try to parse s to get a datetime
+        try:
+            parsed = datetime.fromisoformat(s) if len(s) == 10 else parsedate_to_datetime(s)
+            iso_date = parsed.date().isoformat()
+        except Exception:
+            return jsonify({"message": "Invalid date format", "detail": s}), 400
+
+    record = DatabaseSDKFacade.database.create_employee_attendance(id, name, status, iso_date)
     return jsonify(record)
+
 
 @route.route("/attendance/search", methods=["GET"])
 @cache.cached(timeout=20)
@@ -150,8 +178,17 @@ def read_all_record():
     tags:
       - attendance
     """
-    record = DatabaseSDKFacade.database.read_all_employee_attendance()
-    return jsonify(record)
+    records = DatabaseSDKFacade.database.read_all_employee_attendance()
+    # Convert record['date'] from RFC (if present) to ISO for the UI
+    for r in records:
+        try:
+            dt = parsedate_to_datetime(r.get("date"))
+            r["date"] = dt.date().isoformat()
+        except Exception:
+            # if it's already ISO or unparseable, leave as-is
+            pass
+    return jsonify(records)
+
 
 @route.route("/attendance/health/detail", methods=["GET"])
 def get_detail_healthcheck():

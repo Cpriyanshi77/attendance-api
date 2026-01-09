@@ -26,13 +26,14 @@ flasgger = "0.9.7b2"
 pytest-mock = "^3.11.1"
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
-psycopg2 = "^2.9.10"
 flask-cors = "^5.0.0"
+psycopg2-binary = "^2.9.10"
+Flask = "^2.3.2"
+PyYAML = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
-Flask = "^2.3.2"
-psycopg2 = "^2.9.6"
-PyYAML = "^6.0"
+# you can keep this group for extra dev-only stuff later,
+# but psycopg2-binary / Flask / PyYAML don't need to be here anymore
 
 [build-system]
 requires = ["poetry-core"]
